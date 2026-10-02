@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 from config import YOUTUBE_IMG_URL
 
 
+# YouTube thumbnail quality order
 _SOURCES = (
     "maxresdefault",
     "sddefault",
@@ -17,9 +18,12 @@ _SOURCES = (
 
 _MIN_WIDTH = 300
 
+# Your fixed thumbnail template
 TEMPLATE = "ShrutixMusic/assets/music_thumbnail.png"
+
+# Cache
 CACHE_DIR = "cache"
-CACHE_VERSION = "v3"
+CACHE_VERSION = "v5"
 
 
 def _font(size):
@@ -128,14 +132,12 @@ def _circle_image(
 def _draw_title(base, title):
     draw = ImageDraw.Draw(base)
 
-    title = str(
-        title or "Unknown Song"
-    ).strip()
+    title = str(title or "").strip()
 
     if not title:
         title = "Unknown Song"
 
-    # Existing Crystal Hearts area
+    # Crystal Hearts title area
     draw.rounded_rectangle(
         (
             75,
@@ -147,15 +149,17 @@ def _draw_title(base, title):
         fill=(5, 8, 18, 225),
     )
 
+    # Keep title inside the box
     if len(title) > 38:
         title = title[:35] + "..."
 
-    if len(title) > 35:
-        font_size = 34
-    elif len(title) > 28:
-        font_size = 40
+    # Dynamic font size
+    if len(title) > 32:
+        font_size = 30
+    elif len(title) > 25:
+        font_size = 36
     else:
-        font_size = 48
+        font_size = 44
 
     font = _font(font_size)
 
@@ -185,7 +189,7 @@ def _draw_title(base, title):
         fill=(0, 0, 0, 230),
     )
 
-    # Title
+    # Song title
     draw.text(
         (
             x,
@@ -197,14 +201,14 @@ def _draw_title(base, title):
     )
 
 
-async def _fetch(
+async def _fetch_thumbnail(
     session,
     videoid,
-    name,
+    quality,
 ):
     url = (
         f"https://i.ytimg.com/vi/"
-        f"{videoid}/{name}.jpg"
+        f"{videoid}/{quality}.jpg"
     )
 
     try:
@@ -236,11 +240,47 @@ async def _fetch(
     return raw
 
 
+async def _fetch_youtube_title(
+    session,
+    videoid,
+):
+    """
+    Gets the actual YouTube video title.
+    This is the fallback when the caller doesn't
+    provide a title.
+    """
+
+    url = (
+        "https://www.youtube.com/oembed"
+        f"?url=https://www.youtube.com/watch?v={videoid}"
+        "&format=json"
+    )
+
+    try:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                return None
+
+            data = await resp.json(
+                content_type=None
+            )
+
+            title = data.get("title")
+
+            if title:
+                return str(title).strip()
+
+    except Exception:
+        return None
+
+    return None
+
+
 def _cache_path(videoid, title):
     value = (
         f"{CACHE_VERSION}:"
         f"{videoid}:"
-        f"{title or ''}"
+        f"{title}"
     )
 
     key = hashlib.md5(
@@ -263,13 +303,15 @@ def _create_thumbnail(
 ):
     if not os.path.isfile(TEMPLATE):
         raise FileNotFoundError(
-            f"Thumbnail template not found: {TEMPLATE}"
+            "Thumbnail template not found: "
+            f"{TEMPLATE}"
         )
 
     template = Image.open(
         TEMPLATE
     ).convert("RGBA")
 
+    # Force 1280x720
     if template.size != (1280, 720):
         template = template.resize(
             (1280, 720),
@@ -280,7 +322,7 @@ def _create_thumbnail(
         BytesIO(song_raw)
     ).convert("RGB")
 
-    # YouTube image in top circle
+    # YouTube thumbnail inside top circle
     _circle_image(
         template,
         song_image,
@@ -288,7 +330,7 @@ def _create_thumbnail(
         radius=105,
     )
 
-    # Song title in Crystal Hearts area
+    # Actual song title near Crystal Hearts
     _draw_title(
         template,
         title,
@@ -328,28 +370,20 @@ async def get_thumb(
     videoid,
     title=None,
 ):
+    """
+    Main thumbnail function.
+
+    If title is supplied:
+        use supplied song title.
+
+    If title is missing:
+        automatically fetch the real YouTube title.
+    """
+
     if not videoid:
         return YOUTUBE_IMG_URL
 
     videoid = str(videoid).strip()
-
-    title = str(
-        title or "Unknown Song"
-    ).strip()
-
-    if not title:
-        title = "Unknown Song"
-
-    path = _cache_path(
-        videoid,
-        title,
-    )
-
-    if (
-        os.path.isfile(path)
-        and os.path.getsize(path) > 0
-    ):
-        return path
 
     try:
         os.makedirs(
@@ -358,7 +392,7 @@ async def get_thumb(
         )
 
         timeout = aiohttp.ClientTimeout(
-            total=10,
+            total=15,
             connect=5,
         )
 
@@ -366,13 +400,49 @@ async def get_thumb(
             timeout=timeout
         ) as session:
 
-            song_raw = None
+            # ---------------------------------
+            # GET REAL SONG TITLE
+            # ---------------------------------
 
-            for name in _SOURCES:
-                song_raw = await _fetch(
+            title = str(
+                title or ""
+            ).strip()
+
+            if not title:
+                title = await _fetch_youtube_title(
                     session,
                     videoid,
-                    name,
+                )
+
+            if not title:
+                title = "Unknown Song"
+
+            # ---------------------------------
+            # CACHE
+            # ---------------------------------
+
+            path = _cache_path(
+                videoid,
+                title,
+            )
+
+            if (
+                os.path.isfile(path)
+                and os.path.getsize(path) > 0
+            ):
+                return path
+
+            # ---------------------------------
+            # GET YOUTUBE IMAGE
+            # ---------------------------------
+
+            song_raw = None
+
+            for quality in _SOURCES:
+                song_raw = await _fetch_thumbnail(
+                    session,
+                    videoid,
+                    quality,
                 )
 
                 if song_raw:
@@ -380,6 +450,10 @@ async def get_thumb(
 
             if not song_raw:
                 return YOUTUBE_IMG_URL
+
+            # ---------------------------------
+            # CREATE CUSTOM THUMBNAIL
+            # ---------------------------------
 
             return _create_thumbnail(
                 song_raw,
