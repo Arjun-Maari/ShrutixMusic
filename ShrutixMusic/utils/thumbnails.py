@@ -186,7 +186,7 @@ def _draw_title(base, title):
     )
 
     # Move title UP
-    y = 450
+    y = 420
 
     # -----------------------------------------
     # SAFETY
