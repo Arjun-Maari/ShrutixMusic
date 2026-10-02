@@ -142,8 +142,8 @@ def _draw_title(base, title):
     box_right = 570
 
     # Song title maximum length
-    if len(title) > 20:
-        title = title[:17] + "..."
+    if len(title) > 25:
+        title = title[:20] + "..."
 
     # -----------------------------------------
     # DYNAMIC FONT SIZE
@@ -186,7 +186,7 @@ def _draw_title(base, title):
     )
 
     # Move title UP
-    y = 405
+    y = 400
 
     # -----------------------------------------
     # SAFETY
