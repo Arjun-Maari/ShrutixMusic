@@ -8,10 +8,6 @@ from PIL import Image, ImageDraw, ImageFont
 from config import YOUTUBE_IMG_URL
 
 
-# ==========================================================
-# CONFIG
-# ==========================================================
-
 _SOURCES = (
     "maxresdefault",
     "sddefault",
@@ -22,17 +18,9 @@ _SOURCES = (
 _MIN_WIDTH = 300
 
 TEMPLATE = "ShrutixMusic/assets/music_thumbnail.png"
-
 CACHE_DIR = "cache"
+CACHE_VERSION = "v3"
 
-# Change this whenever you change the thumbnail design.
-# This automatically prevents old cached thumbnails from being used.
-CACHE_VERSION = "v2"
-
-
-# ==========================================================
-# FONT
-# ==========================================================
 
 def _font(size):
     font_paths = (
@@ -41,7 +29,7 @@ def _font(size):
     )
 
     for font_path in font_paths:
-        if os.path.exists(font_path):
+        if os.path.isfile(font_path):
             try:
                 return ImageFont.truetype(
                     font_path,
@@ -53,16 +41,7 @@ def _font(size):
     return ImageFont.load_default()
 
 
-# ==========================================================
-# IMAGE COVER
-# ==========================================================
-
 def _fit_cover(image, size):
-    """
-    Crop image to completely fill the requested size
-    without stretching.
-    """
-
     image = image.convert("RGB")
 
     target_w, target_h = size
@@ -105,20 +84,12 @@ def _fit_cover(image, size):
     )
 
 
-# ==========================================================
-# CIRCLE YOUTUBE THUMBNAIL
-# ==========================================================
-
 def _circle_image(
     base,
     song_image,
     center,
     radius,
 ):
-    """
-    Put the YouTube thumbnail inside a perfect circle.
-    """
-
     size = radius * 2
 
     song_image = _fit_cover(
@@ -154,16 +125,7 @@ def _circle_image(
     )
 
 
-# ==========================================================
-# SONG TITLE
-# ==========================================================
-
 def _draw_title(base, title):
-    """
-    Replace the existing title in the template
-    with the actual YouTube song title.
-    """
-
     draw = ImageDraw.Draw(base)
 
     title = str(
@@ -173,11 +135,7 @@ def _draw_title(base, title):
     if not title:
         title = "Unknown Song"
 
-    # ------------------------------------------------------
-    # TITLE AREA
-    # ------------------------------------------------------
-
-    # This covers the existing Crystal Hearts text.
+    # Existing Crystal Hearts area
     draw.rounded_rectangle(
         (
             75,
@@ -189,27 +147,17 @@ def _draw_title(base, title):
         fill=(5, 8, 18, 225),
     )
 
-    # ------------------------------------------------------
-    # TITLE LENGTH
-    # ------------------------------------------------------
-
     if len(title) > 38:
         title = title[:35] + "..."
 
     if len(title) > 35:
         font_size = 34
-
     elif len(title) > 28:
         font_size = 40
-
     else:
         font_size = 48
 
     font = _font(font_size)
-
-    # ------------------------------------------------------
-    # CENTER TEXT
-    # ------------------------------------------------------
 
     bbox = draw.textbbox(
         (0, 0),
@@ -220,26 +168,13 @@ def _draw_title(base, title):
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
 
-    area_center_x = (
-        75 + 570
-    ) // 2
+    center_x = (75 + 570) // 2
+    center_y = (475 + 545) // 2
 
-    area_center_y = (
-        475 + 545
-    ) // 2
+    x = center_x - (text_width // 2)
+    y = center_y - (text_height // 2)
 
-    x = area_center_x - (
-        text_width // 2
-    )
-
-    y = area_center_y - (
-        text_height // 2
-    )
-
-    # ------------------------------------------------------
-    # SHADOW
-    # ------------------------------------------------------
-
+    # Shadow
     draw.text(
         (
             x + 3,
@@ -250,10 +185,7 @@ def _draw_title(base, title):
         fill=(0, 0, 0, 230),
     )
 
-    # ------------------------------------------------------
-    # TITLE
-    # ------------------------------------------------------
-
+    # Title
     draw.text(
         (
             x,
@@ -264,10 +196,6 @@ def _draw_title(base, title):
         fill=(255, 255, 255, 255),
     )
 
-
-# ==========================================================
-# YOUTUBE THUMBNAIL FETCH
-# ==========================================================
 
 async def _fetch(
     session,
@@ -280,9 +208,184 @@ async def _fetch(
     )
 
     try:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                return None
 
-        async with session.get(
-            url
-        ) as resp:
+            raw = await resp.read()
 
-            if resp
+    except Exception:
+        return None
+
+    if not raw:
+        return None
+
+    try:
+        image = Image.open(
+            BytesIO(raw)
+        ).convert("RGB")
+
+        image.load()
+
+    except Exception:
+        return None
+
+    if image.width < _MIN_WIDTH:
+        return None
+
+    return raw
+
+
+def _cache_path(videoid, title):
+    value = (
+        f"{CACHE_VERSION}:"
+        f"{videoid}:"
+        f"{title or ''}"
+    )
+
+    key = hashlib.md5(
+        value.encode(
+            "utf-8",
+            errors="ignore",
+        )
+    ).hexdigest()
+
+    return os.path.join(
+        CACHE_DIR,
+        f"custom_{key}.jpg",
+    )
+
+
+def _create_thumbnail(
+    song_raw,
+    title,
+    output,
+):
+    if not os.path.isfile(TEMPLATE):
+        raise FileNotFoundError(
+            f"Thumbnail template not found: {TEMPLATE}"
+        )
+
+    template = Image.open(
+        TEMPLATE
+    ).convert("RGBA")
+
+    if template.size != (1280, 720):
+        template = template.resize(
+            (1280, 720),
+            Image.Resampling.LANCZOS,
+        )
+
+    song_image = Image.open(
+        BytesIO(song_raw)
+    ).convert("RGB")
+
+    # YouTube image in top circle
+    _circle_image(
+        template,
+        song_image,
+        center=(275, 150),
+        radius=105,
+    )
+
+    # Song title in Crystal Hearts area
+    _draw_title(
+        template,
+        title,
+    )
+
+    os.makedirs(
+        os.path.dirname(output) or ".",
+        exist_ok=True,
+    )
+
+    temp_output = output + ".tmp.jpg"
+
+    try:
+        template.convert("RGB").save(
+            temp_output,
+            "JPEG",
+            quality=95,
+            optimize=True,
+        )
+
+        os.replace(
+            temp_output,
+            output,
+        )
+
+    finally:
+        if os.path.isfile(temp_output):
+            try:
+                os.remove(temp_output)
+            except Exception:
+                pass
+
+    return output
+
+
+async def get_thumb(
+    videoid,
+    title=None,
+):
+    if not videoid:
+        return YOUTUBE_IMG_URL
+
+    videoid = str(videoid).strip()
+
+    title = str(
+        title or "Unknown Song"
+    ).strip()
+
+    if not title:
+        title = "Unknown Song"
+
+    path = _cache_path(
+        videoid,
+        title,
+    )
+
+    if (
+        os.path.isfile(path)
+        and os.path.getsize(path) > 0
+    ):
+        return path
+
+    try:
+        os.makedirs(
+            CACHE_DIR,
+            exist_ok=True,
+        )
+
+        timeout = aiohttp.ClientTimeout(
+            total=10,
+            connect=5,
+        )
+
+        async with aiohttp.ClientSession(
+            timeout=timeout
+        ) as session:
+
+            song_raw = None
+
+            for name in _SOURCES:
+                song_raw = await _fetch(
+                    session,
+                    videoid,
+                    name,
+                )
+
+                if song_raw:
+                    break
+
+            if not song_raw:
+                return YOUTUBE_IMG_URL
+
+            return _create_thumbnail(
+                song_raw,
+                title,
+                path,
+            )
+
+    except Exception:
+        return YOUTUBE_IMG_URL
