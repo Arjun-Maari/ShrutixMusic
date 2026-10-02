@@ -142,7 +142,7 @@ def _draw_title(base, title):
     box_right = 570
 
     # Song title maximum length
-    if len(title) > 25:
+    if len(title) > 22:
         title = title[:19] + "..."
 
     # -----------------------------------------
