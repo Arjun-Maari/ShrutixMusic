@@ -135,52 +135,33 @@ def _draw_title(base, title):
         title = "Unknown Song"
 
     # -----------------------------------------
-    # TITLE BOX
+    # TITLE AREA
     # -----------------------------------------
 
     box_left = 75
-    box_top = 475
     box_right = 570
-    box_bottom = 545
 
-    draw.rounded_rectangle(
-        (
-            box_left,
-            box_top,
-            box_right,
-            box_bottom,
-        ),
-        radius=18,
-        fill=(5, 8, 18, 225),
-    )
-
-    # -----------------------------------------
-    # CLEAN TITLE
-    # -----------------------------------------
-
-    # Maximum characters
-    if len(title) > 38:
-        title = title[:38] + "..."
+    # Song title maximum length
+    if len(title) > 32:
+        title = title[:29] + "..."
 
     # -----------------------------------------
     # DYNAMIC FONT SIZE
     # -----------------------------------------
 
-    if len(title) > 34:
-        font_size = 27
-    elif len(title) > 29:
-        font_size = 31
-    elif len(title) > 23:
-        font_size = 36
-    elif len(title) > 17:
-        font_size = 40
+    if len(title) <= 15:
+        font_size = 48
+    elif len(title) <= 22:
+        font_size = 44
+    elif len(title) <= 28:
+        font_size = 38
     else:
-        font_size = 43
+        font_size = 33
 
     font = _font(font_size)
 
     # -----------------------------------------
-    # TEXT SIZE
+    # GET TEXT SIZE
     # -----------------------------------------
 
     bbox = draw.textbbox(
@@ -193,36 +174,32 @@ def _draw_title(base, title):
     text_height = bbox[3] - bbox[1]
 
     # -----------------------------------------
-    # CENTER HORIZONTALLY
+    # CENTER TEXT
     # -----------------------------------------
 
-    x = (
-        (box_left + box_right) // 2
-        - text_width // 2
+    center_x = (
+        box_left + box_right
+    ) // 2
+
+    x = center_x - (
+        text_width // 2
     )
 
-    # -----------------------------------------
-    # MOVE TEXT UP
-    # -----------------------------------------
-
-    y = (
-        (box_top + box_bottom) // 2
-        - text_height // 2
-        - 12
-    )
+    # Move title UP
+    y = 488
 
     # -----------------------------------------
-    # SAFETY LIMITS
+    # SAFETY
     # -----------------------------------------
 
-    if x < box_left + 10:
-        x = box_left + 10
+    if x < box_left:
+        x = box_left
 
-    if x + text_width > box_right - 10:
-        x = box_right - text_width - 10
+    if x + text_width > box_right:
+        x = box_right - text_width
 
     # -----------------------------------------
-    # SHADOW
+    # SOFT SHADOW
     # -----------------------------------------
 
     draw.text(
@@ -232,7 +209,7 @@ def _draw_title(base, title):
         ),
         title,
         font=font,
-        fill=(0, 0, 0, 230),
+        fill=(0, 0, 0, 180),
     )
 
     # -----------------------------------------
@@ -246,9 +223,8 @@ def _draw_title(base, title):
         ),
         title,
         font=font,
-        fill=(255, 255, 255, 255),
+        fill=(245, 245, 250, 255),
     )
-
 
 async def _fetch_thumbnail(
     session,
