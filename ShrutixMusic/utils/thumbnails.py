@@ -20,7 +20,7 @@ _MIN_WIDTH = 300
 TEMPLATE = "ShrutixMusic/assets/music_thumbnail.png"
 
 CACHE_DIR = "cache"
-CACHE_VERSION = "v8"          # cache clear kosam bump chesa
+CACHE_VERSION = "v9"          # final version
 
 
 def _font(size):
@@ -129,7 +129,7 @@ def _circle_image(
 def _draw_title(base, title):
     """
     Song title left box lo correct ga undeli.
-    Overflow fix + pixel based truncation + smaller text size.
+    Overflow fix + pixel based truncation + smaller text.
     """
     draw = ImageDraw.Draw(base)
 
@@ -137,14 +137,14 @@ def _draw_title(base, title):
     if not title:
         title = "Unknown Song"
 
-    # Box boundaries
-    box_left  = 90
-    box_right = 540
+    # Box boundaries (tight)
+    box_left  = 95
+    box_right = 520
     max_width = box_right - box_left
     y = 398
 
     # Dynamic font size (smaller)
-    for font_size in (40, 36, 32, 28, 24):
+    for font_size in (38, 34, 30, 26, 22):
         font = _font(font_size)
 
         test = title
