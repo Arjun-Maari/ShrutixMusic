@@ -208,7 +208,7 @@ def _draw_title(base, title):
     y = (
         (box_top + box_bottom) // 2
         - text_height // 2
-        - 16
+        - 12
     )
 
     # -----------------------------------------
