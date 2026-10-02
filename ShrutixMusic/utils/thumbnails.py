@@ -309,7 +309,7 @@ def _create_thumbnail(
         template,
         song_image,
         center=(275, 150),
-        radius=105,
+        radius=115,
     )
 
     _draw_title(
