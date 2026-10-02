@@ -20,7 +20,7 @@ _MIN_WIDTH = 300
 TEMPLATE = "ShrutixMusic/assets/music_thumbnail.png"
 
 CACHE_DIR = "cache"
-CACHE_VERSION = "v6"
+CACHE_VERSION = "v7"          # ← idi important
 
 
 def _font(size):
@@ -127,104 +127,68 @@ def _circle_image(
 
 
 def _draw_title(base, title):
+    """
+    Song title left box lo correct ga undeli.
+    Overflow fix + pixel based truncation.
+    """
     draw = ImageDraw.Draw(base)
 
     title = str(title or "").strip()
-
     if not title:
         title = "Unknown Song"
 
-    # -----------------------------------------
-    # TITLE AREA
-    # -----------------------------------------
+    # Box boundaries
+    box_left  = 90
+    box_right = 540
+    max_width = box_right - box_left
+    y = 395
 
-    box_left = 75
-    box_right = 570
+    # Dynamic font size + pixel truncation
+    for font_size in (48, 44, 40, 36, 32):
+        font = _font(font_size)
 
-    # Song title maximum length
-    if len(title) > 18:
-        title = title[:14] + "..."
+        test = title
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if (bbox[2] - bbox[0]) <= max_width:
+            break
 
-    # -----------------------------------------
-    # DYNAMIC FONT SIZE
-    # -----------------------------------------
+        # Truncate until it fits
+        while True:
+            bbox = draw.textbbox((0, 0), test, font=font)
+            if (bbox[2] - bbox[0]) <= max_width or len(test) <= 4:
+                break
+            if test.endswith("..."):
+                test = test[:-4].rstrip() + "..."
+            else:
+                test = test[:-1].rstrip() + "..."
 
-    if len(title) <= 15:
-        font_size = 48
-    elif len(title) <= 22:
-        font_size = 44
-    elif len(title) <= 28:
-        font_size = 38
-    else:
-        font_size = 33
+        title = test
+        break
 
-    font = _font(font_size)
-
-    # -----------------------------------------
-    # GET TEXT SIZE
-    # -----------------------------------------
-
-    bbox = draw.textbbox(
-        (0, 0),
-        title,
-        font=font,
-    )
-
+    bbox = draw.textbbox((0, 0), title, font=font)
     text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
 
-    # -----------------------------------------
-    # CENTER TEXT
-    # -----------------------------------------
-
-    center_x = (
-        box_left + box_right
-    ) // 2
-
-    x = center_x - (
-        text_width // 2 - 180
-    )
-
-    # Move title UP
-    y = 400
-
-    # -----------------------------------------
-    # SAFETY
-    # -----------------------------------------
-
-    if x < box_left:
-        x = box_left
+    x = box_left
 
     if x + text_width > box_right:
         x = box_right - text_width
 
-    # -----------------------------------------
-    # SOFT SHADOW
-    # -----------------------------------------
-
+    # Soft shadow
     draw.text(
-        (
-            x + 2,
-            y + 2,
-        ),
+        (x + 2, y + 2),
         title,
         font=font,
         fill=(0, 0, 0, 180),
     )
 
-    # -----------------------------------------
-    # SONG TITLE
-    # -----------------------------------------
-
+    # Main title
     draw.text(
-        (
-            x,
-            y,
-        ),
+        (x, y),
         title,
         font=font,
         fill=(245, 245, 250, 255),
     )
+
 
 async def _fetch_thumbnail(
     session,
@@ -269,11 +233,6 @@ async def _fetch_youtube_title(
     session,
     videoid,
 ):
-    """
-    Fetch the actual YouTube title
-    when title is not supplied by caller.
-    """
-
     url = (
         "https://www.youtube.com/oembed"
         f"?url=https://www.youtube.com/watch?v={videoid}"
@@ -326,27 +285,15 @@ def _create_thumbnail(
     title,
     output,
 ):
-    # -----------------------------------------
-    # CHECK TEMPLATE
-    # -----------------------------------------
-
     if not os.path.isfile(TEMPLATE):
         raise FileNotFoundError(
             "Thumbnail template not found: "
             f"{TEMPLATE}"
         )
 
-    # -----------------------------------------
-    # LOAD TEMPLATE
-    # -----------------------------------------
-
     template = Image.open(
         TEMPLATE
     ).convert("RGBA")
-
-    # -----------------------------------------
-    # FORCE 1280x720
-    # -----------------------------------------
 
     if template.size != (1280, 720):
         template = template.resize(
@@ -354,17 +301,9 @@ def _create_thumbnail(
             Image.Resampling.LANCZOS,
         )
 
-    # -----------------------------------------
-    # LOAD YOUTUBE IMAGE
-    # -----------------------------------------
-
     song_image = Image.open(
         BytesIO(song_raw)
     ).convert("RGB")
-
-    # -----------------------------------------
-    # PUT YOUTUBE IMAGE IN CIRCLE
-    # -----------------------------------------
 
     _circle_image(
         template,
@@ -373,18 +312,10 @@ def _create_thumbnail(
         radius=105,
     )
 
-    # -----------------------------------------
-    # PUT SONG TITLE
-    # -----------------------------------------
-
     _draw_title(
         template,
         title,
     )
-
-    # -----------------------------------------
-    # CREATE CACHE DIRECTORY
-    # -----------------------------------------
 
     os.makedirs(
         os.path.dirname(output) or ".",
@@ -424,21 +355,6 @@ async def get_thumb(
     videoid,
     title=None,
 ):
-    """
-    Generate custom music thumbnail.
-
-    videoid:
-        YouTube video ID
-
-    title:
-        Song title. If missing, the real
-        YouTube title will be fetched.
-    """
-
-    # -----------------------------------------
-    # INVALID VIDEO ID
-    # -----------------------------------------
-
     if not videoid:
         return YOUTUBE_IMG_URL
 
@@ -446,18 +362,10 @@ async def get_thumb(
 
     try:
 
-        # -------------------------------------
-        # CREATE CACHE DIRECTORY
-        # -------------------------------------
-
         os.makedirs(
             CACHE_DIR,
             exist_ok=True,
         )
-
-        # -------------------------------------
-        # HTTP TIMEOUT
-        # -------------------------------------
 
         timeout = aiohttp.ClientTimeout(
             total=15,
@@ -468,16 +376,10 @@ async def get_thumb(
             timeout=timeout
         ) as session:
 
-            # ---------------------------------
-            # GET TITLE
-            # ---------------------------------
-
             title = str(
                 title or ""
             ).strip()
 
-            # If caller didn't provide title,
-            # fetch actual YouTube title.
             if not title:
 
                 title = await _fetch_youtube_title(
@@ -485,32 +387,19 @@ async def get_thumb(
                     videoid,
                 )
 
-            # Final fallback
             if not title:
                 title = "Unknown Song"
-
-            # ---------------------------------
-            # CACHE PATH
-            # ---------------------------------
 
             path = _cache_path(
                 videoid,
                 title,
             )
 
-            # ---------------------------------
-            # USE EXISTING CACHE
-            # ---------------------------------
-
             if (
                 os.path.isfile(path)
                 and os.path.getsize(path) > 0
             ):
                 return path
-
-            # ---------------------------------
-            # DOWNLOAD YOUTUBE THUMBNAIL
-            # ---------------------------------
 
             song_raw = None
 
@@ -525,16 +414,8 @@ async def get_thumb(
                 if song_raw:
                     break
 
-            # ---------------------------------
-            # NO IMAGE
-            # ---------------------------------
-
             if not song_raw:
                 return YOUTUBE_IMG_URL
-
-            # ---------------------------------
-            # CREATE FINAL THUMBNAIL
-            # ---------------------------------
 
             return _create_thumbnail(
                 song_raw,
