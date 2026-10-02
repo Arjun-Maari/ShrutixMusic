@@ -182,7 +182,7 @@ def _draw_title(base, title):
     ) // 2
 
     x = center_x - (
-        text_width // 2 - 100
+        text_width // 2 - 180
     )
 
     # Move title UP
