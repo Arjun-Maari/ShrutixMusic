@@ -39,7 +39,7 @@ def _font(size):
 
     return ImageFont.load_default()
 
- def _draw_title(base, title):
+def _draw_title(base, title):
     """
     Song title → exact fit inside the Song box (adjusted position)
     """
@@ -91,23 +91,6 @@ def _font(size):
         font=font,
         fill=(255, 240, 210, 255),
     )
-
-    # Soft shadow
-    draw.text(
-        (box_left + 2, y + 2),
-        text,
-        font=font,
-        fill=(0, 0, 0, 160),
-    )
-
-    # Main text (warm gold-white – birthday theme)
-    draw.text(
-        (box_left, y),
-        text,
-        font=font,
-        fill=(255, 240, 210, 255),
-    )
-
 
 async def _fetch_thumbnail(session, videoid, quality):
     url = f"https://i.ytimg.com/vi/{videoid}/{quality}.jpg"
