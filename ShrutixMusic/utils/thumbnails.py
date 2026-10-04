@@ -39,10 +39,9 @@ def _font(size):
 
     return ImageFont.load_default()
 
-
-def _draw_title(base, title):
+ def _draw_title(base, title):
     """
-    Song title → exact fit inside the Song box of the birthday template.
+    Song title → exact fit inside the Song box (adjusted position)
     """
     draw = ImageDraw.Draw(base)
 
@@ -50,15 +49,15 @@ def _draw_title(base, title):
     if not title:
         title = "Unknown Song"
 
-    # ===== EXACT BOX COORDINATES (from the template I gave) =====
-    box_left   = 920          # after "Song :" text
-    box_right  = 1205         # right edge of the box
-    y          = 652          # vertical center of the Song box
+    # ===== ADJUSTED COORDINATES (up + left) =====
+    box_left   = 905          # slightly left
+    box_right  = 1185         # slightly tighter so no overflow
+    y          = 648          # slightly up
     max_width  = box_right - box_left
-    # =============================================================
+    # ===========================================
 
     # Dynamic font size + smart truncation
-    for font_size in (32, 28, 24, 20, 18):
+    for font_size in (30, 26, 22, 18):
         font = _font(font_size)
         text = title
 
@@ -69,7 +68,6 @@ def _draw_title(base, title):
             if text_width <= max_width or len(text) < 8:
                 break
 
-            # Truncate with ellipsis
             if text.endswith("..."):
                 text = text[:-4].rstrip() + "..."
             else:
@@ -77,6 +75,22 @@ def _draw_title(base, title):
 
         if text_width <= max_width:
             break
+
+    # Soft shadow
+    draw.text(
+        (box_left + 2, y + 2),
+        text,
+        font=font,
+        fill=(0, 0, 0, 160),
+    )
+
+    # Main text (warm gold-white)
+    draw.text(
+        (box_left, y),
+        text,
+        font=font,
+        fill=(255, 240, 210, 255),
+    )
 
     # Soft shadow
     draw.text(
