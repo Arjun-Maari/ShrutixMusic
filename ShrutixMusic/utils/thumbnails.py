@@ -41,7 +41,7 @@ def _font(size):
 
 def _draw_title(base, title):
     """
-    Song title → exact fit inside the Song box (final adjusted)
+    Song title → final perfect position inside the Song box
     """
     draw = ImageDraw.Draw(base)
 
@@ -49,12 +49,12 @@ def _draw_title(base, title):
     if not title:
         title = "Unknown Song"
 
-    # ===== FINAL ADJUSTED COORDINATES =====
-    box_left   = 890          # more left
-    box_right  = 1195         # slightly wider → +3 characters
-    y          = 640          # more up
+    # ===== FINAL POSITION (3× left + 2× up) =====
+    box_left   = 860          # 3 times more left
+    box_right  = 1180         # still safe width
+    y          = 620          # 2 times more up
     max_width  = box_right - box_left
-    # =====================================
+    # ===========================================
 
     # Dynamic font size + smart truncation
     for font_size in (30, 26, 22, 18):
@@ -91,6 +91,8 @@ def _draw_title(base, title):
         font=font,
         fill=(255, 240, 210, 255),
     )
+    
+
 
 async def _fetch_thumbnail(session, videoid, quality):
     url = f"https://i.ytimg.com/vi/{videoid}/{quality}.jpg"
