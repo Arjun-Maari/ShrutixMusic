@@ -41,7 +41,7 @@ def _font(size):
 
 def _draw_title(base, title):
     """
-    Song title → exact fit inside the Song box (adjusted position)
+    Song title → exact fit inside the Song box (final adjusted)
     """
     draw = ImageDraw.Draw(base)
 
@@ -49,12 +49,12 @@ def _draw_title(base, title):
     if not title:
         title = "Unknown Song"
 
-    # ===== ADJUSTED COORDINATES (up + left) =====
-    box_left   = 905          # slightly left
-    box_right  = 1185         # slightly tighter so no overflow
-    y          = 648          # slightly up
+    # ===== FINAL ADJUSTED COORDINATES =====
+    box_left   = 890          # more left
+    box_right  = 1195         # slightly wider → +3 characters
+    y          = 640          # more up
     max_width  = box_right - box_left
-    # ===========================================
+    # =====================================
 
     # Dynamic font size + smart truncation
     for font_size in (30, 26, 22, 18):
