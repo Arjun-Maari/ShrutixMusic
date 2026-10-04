@@ -41,7 +41,7 @@ def _font(size):
 
 def _draw_title(base, title):
     """
-    Song title → perfect center inside the Song box
+    Song title → perfect fit inside the Song box
     """
     draw = ImageDraw.Draw(base)
 
@@ -49,12 +49,12 @@ def _draw_title(base, title):
     if not title:
         title = "Unknown Song"
 
-    # ===== LATEST ADJUSTMENT (2× up + 3× left) =====
-    box_left   = 830          # 3 times more left
-    box_right  = 1170         # safe width
-    y          = 600          # 2 times more up
+    # ===== LAST ADJUSTMENT =====
+    box_left   = 820          # 1 time more left
+    box_right  = 1155         # 2 alphabets reduce
+    y          = 610          # 1 time down
     max_width  = box_right - box_left
-    # ==============================================
+    # ===========================
 
     for font_size in (30, 26, 22, 18):
         font = _font(font_size)
@@ -90,6 +90,8 @@ def _draw_title(base, title):
         font=font,
         fill=(255, 240, 210, 255),
     )
+
+    
     
 
 
