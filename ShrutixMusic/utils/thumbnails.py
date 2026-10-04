@@ -51,7 +51,7 @@ def _draw_title(base, title):
 
     # ===== LAST ADJUSTMENT =====
     box_left   = 820          # 1 time more left
-    box_right  = 1155         # 2 alphabets reduce
+    box_right  = 1130         # 2 alphabets reduce
     y          = 610          # 1 time down
     max_width  = box_right - box_left
     # ===========================
